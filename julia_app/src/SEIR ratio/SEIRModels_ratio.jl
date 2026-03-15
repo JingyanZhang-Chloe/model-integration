@@ -45,6 +45,8 @@ module Logic_R
     using NumericalIntegration
     using Statistics
     using HomotopyContinuation
+    using DynamicPolynomials
+    using Random
 
     function seir!(du, u, p, t)
         S, E, I, R = u
@@ -1171,6 +1173,7 @@ module Logic_R
         savefig(final_plot, "num_of_datapoints_analysis.pdf")
     end
 
+
     function run_experiments_k_points_HC_LS(
         k_points::Vector{Int},
         noise::Float64,
@@ -1269,6 +1272,96 @@ module Logic_R
 
         println("\n============================================================\n")
         return re
+    end
+
+
+    function select_T(I, t; method="S", m_min=-6, m_max=6)
+        I0, B1, B2, B3, B4, B5, B6 = get_blocks(I, t, method)
+
+        s = [
+            B2[end],  # scales as 1/T
+            B3[end],  # scales as 1/T
+            B4[end],  # scales as 1/T^2
+            B5[end],  # scales as 1/T^2
+            B6[end],  # scales as 1/T^3
+        ]
+        powers = [1, 1, 2, 2, 3]   # exponent of T in denominator
+
+        best_m = nothing
+        best_score = Inf
+
+        for m in m_min:m_max
+            T = 10.0^m  # use float to allow negative m cleanly
+            scaled = [ s[j] / (T^powers[j]) for j in eachindex(s) ]
+            logs = log10.(scaled .+ eps())  # eps() avoids log(0)
+            score = var(logs)
+
+            if score < best_score
+                best_score = score
+                best_m = m
+            end
+        end
+
+        best_T = 10.0^best_m
+        final_scaled = [ s[j] / (best_T^powers[j]) for j in eachindex(s) ]
+
+        return best_T, final_scaled
+    end
+
+
+    function HC_LS_complete(t::Vector{Float64}, I_data::Vector, vars::Vector, method::String)
+        T, _ = select_T(I_data, t)
+        t_scaled = t ./ T
+        B = get_blocks(I_data, t_scaled, method)
+
+        function model(x, p)
+            return residual(p, B..., x)
+        end
+
+        I_hat = residual(vars, B..., t_scaled)
+        J = sum((I_hat .- I_data).^2)
+        system_eqs = differentiate(J, vars)
+        C = System(system_eqs, variables=vars)
+        result = HomotopyContinuation.solve(C, show_progress=false)
+        real_results_scaled = Vector{Float64}[]
+
+        for sol in solutions(result)
+            push!(real_results_scaled, real.(sol))
+        end
+
+        lb_scaled = [Value_R.lb[1]*T, Value_R.lb[2]*T, Value_R.lb[3]*T, Value_R.lb[4], Value_R.lb[5]]
+        ub_scaled = [Inf, Inf, Inf, Value_R.ub[4], Value_R.ub[5]]
+
+        filtered_results_scaled = Vector{Float64}[]
+
+        for r in real_results_scaled
+            bound_result = project_to_bounds(r, lb_scaled, ub_scaled, B[1])
+            fit = curve_fit(model, t_scaled, I_data, bound_result, lower=lb_scaled, upper=ub_scaled)
+            push!(filtered_results_scaled, fit.param)
+        end
+
+        best_result_scaled, RSS_Ihat_Idata = best_solution(filtered_results_scaled, I_data, B..., t_scaled)
+        best_result = to_physical(best_result_scaled, T)
+
+        return (
+            method = method,
+            best_result = best_result,
+            RSS_Ihat_Idata = RSS_Ihat_Idata,
+            vars = vars
+        )
+    end
+
+    function print_HC_LS(results::NamedTuple)
+
+        println("=== HC_LS_complete Results ===")
+        println("Method used: ", results.method)
+
+        println("\nBest parameter estimates:")
+        for (var, val) in zip(results.vars, results.best_result)
+            println(var, " = ", val)
+        end
+
+        println("\nResidual sum of squares (RSS_Ihat_Idata): ", results.RSS_Ihat_Idata)
     end
 
 end

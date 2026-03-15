@@ -7,8 +7,6 @@ Author: zhangjingyan
 Date: 12/02/2026
 =#
 
-using HomotopyContinuation, DynamicPolynomials, Random, Plots, DifferentialEquations, LsqFit, Statistics
-
 include("SEIRModels_ratio.jl")
 using .Logic_R
 using .Value_R
@@ -634,6 +632,48 @@ function select_T(I, t; method="S", m_min=-6, m_max=6)
 end
 
 
+function HC_LS_complete(t::Vector{Float64}, I_data::Vector, vars::Vector, method::String)
+    T, _ = select_T(I_data, t)
+    t_scaled = t ./ T
+    B = Logic_R.get_blocks(I_data, t_scaled, method)
+
+    function model(x, p)
+        return Logic_R.residual(p, B..., x)
+    end
+
+    I_hat = Logic_R.residual(vars, B..., t_scaled)
+    J = sum((I_hat .- I_data).^2)
+    system_eqs = differentiate(J, vars)
+    C = System(system_eqs, variables=vars)
+    result = HomotopyContinuation.solve(C, show_progress=false)
+    real_results_scaled = Vector{Float64}[]
+
+    for sol in solutions(result)
+        push!(real_results_scaled, real.(sol))
+    end
+
+    lb_scaled = [Value_R.lb[1]*T, Value_R.lb[2]*T, Value_R.lb[3]*T, Value_R.lb[4], Value_R.lb[5]]
+    ub_scaled = [Inf, Inf, Inf, Value_R.ub[4], Value_R.ub[5]]
+
+    filtered_results_scaled = Vector{Float64}[]
+
+    for r in real_results_scaled
+        bound_result = Logic_R.project_to_bounds(r, lb_scaled, ub_scaled, B[1])
+        fit = curve_fit(model, t_scaled, I_data, bound_result, lower=lb_scaled, upper=ub_scaled)
+        push!(filtered_results_scaled, fit.param)
+    end
+
+    best_result_scaled, RSS_Ihat_Idata = Logic_R.best_solution(filtered_results_scaled, I_data, B..., t_scaled)
+    best_result = to_physical(best_result_scaled, T)
+
+    return (
+        method = method,
+        best_result = best_result,
+        RSS_Ihat_Idata = RSS_Ihat_Idata,
+    )
+end
+
+
 function main()
     t = collect(0.0:10.0:1000.0)
     S_, E_, I_, R_ = Logic_R.simulate_seir(t)
@@ -674,7 +714,7 @@ function main()
     Logic_R.num_of_datapoints_analysis_HC_LS(num_of_datapoints, 0.01, T, variables)
     =#
 
-
+    println("Selected T $T")
     k_points = [10 * i for i in 1:1:10]
     Logic_R.run_experiments_k_points_HC_LS(k_points, noise, I, t_scaled, T, variables)
 
