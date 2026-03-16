@@ -1,4 +1,4 @@
-# seir_model.jl
+# least_squares.jl
 # Julia Script
 
 #=

@@ -56,6 +56,29 @@ The framework supports multiple numerical integration rules, with **Simpson’s 
 
 ---
 
+## Repository Structure
+
+The repository contains both **Julia** and **Python** implementations used throughout the thesis.
+
+- The **Julia implementation** is used for the **SEIR model experiments** and the main **HC--LS framework**.
+- The **Python implementation** is mainly used for the **SIR model motivation** and supporting experiments.
+
+### `julia_app/`
+
+This folder contains the main implementation for the **SEIR model**.
+
+- `SEIR ratio/`  
+  Contains the core implementation of the **HC--LS framework**, including the introduced techniques to improve numerical stability, and the functions/scripts used for the main numerical experiments.
+
+- `SEIR/`  
+  Contains an earlier **non-ratio formulation** of the SEIR model. This version was ultimately abandoned in favor of the ratio-based approach but is kept for reference.
+
+### `python_app/`
+
+This folder contains the **Python implementation**, primarily used for the **SIR model motivation section** of the thesis and additional exploratory experiments.
+
+---
+
 ## Installation
 
 1. Clone the repository:  

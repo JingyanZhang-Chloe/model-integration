@@ -48,6 +48,7 @@ module Logic_R
     using DynamicPolynomials
     using Random
 
+
     function seir!(du, u, p, t)
         S, E, I, R = u
         α, σ, γ = p
@@ -56,6 +57,7 @@ module Logic_R
         du[3] = σ * E - γ * I
         du[4] = γ * I
     end
+
 
     function simulate_seir(t; u0=Value_R.u, p=Value_R.p_true, plot=false)
         prob = ODEProblem(seir!, u0, (t[1], t[end]), p)
@@ -81,6 +83,7 @@ module Logic_R
 
         return S, E, I, R
     end
+
 
     function cumintegrate(x::AbstractVector, y::AbstractVector)
         n = length(x)
@@ -153,6 +156,7 @@ module Logic_R
         return output
     end
 
+
     function cumintegrate_simpson_uniform(x::AbstractVector, y::AbstractVector)
         n = length(x)
         T = promote_type(eltype(x), eltype(y))
@@ -210,6 +214,7 @@ module Logic_R
         return output
     end
 
+
     function get_blocks(I_data::Vector{Float64}, t::Vector{Float64}, method::String)
         I0 = I_data[1]
 
@@ -244,6 +249,7 @@ module Logic_R
         return I0, B1, B2, B3, B4, B5, B6
     end
 
+
     function odes!(du, u, p, t)
         S, E, I, R, I_int, I_int_sq, I_int_int_sq, I_int_B4, I_int_B5 = u
         α, σ, γ = p
@@ -258,6 +264,7 @@ module Logic_R
         du[8] = t * I
         du[9] = t * (I^2)
     end
+
 
     function get_ideal_blocks(t::Vector{Float64})
         prob = ODEProblem(odes!, [Value_R.S0, Value_R.E0, Value_R.I0, Value_R.R0, 0.0, 0.0, 0.0, 0.0, 0.0], (t[1], t[end]), Value_R.p_true)
@@ -281,6 +288,7 @@ module Logic_R
         return I0, B1, B2, B3, B4, B5, B6, I
     end
 
+
     function residual(paras, I0, B1, B2, B3, B4, B5, B6, t)
         α, σ, γ, S0, E0 = paras
 
@@ -293,6 +301,7 @@ module Logic_R
 
         return I0 .+ C1 .+ C2 .+ C3 .+ C4 .+ C5 .+ C6
     end
+
 
     function comp_I_hat(paras_scaled, I0, B1, B2, B3, B4, B5, B6, t)
         α_eff  = paras_scaled[1] * Value_R.scales[1]
@@ -310,6 +319,7 @@ module Logic_R
 
         return I0 .+ C1 .+ C2 .+ C3 .+ C4 .+ C5 .+ C6
     end
+
 
     function run_experiments(u0::Vector, I_data::Vector, t::Vector, method::String; I::Union{Nothing, Vector{Float64}}=nothing, scales=Value_R.scales)::NamedTuple
         alpha_list = Float64[]
@@ -351,6 +361,7 @@ module Logic_R
             blocks = blocks
         )
     end
+
 
     function run_experiments_k_points(
         u0::Vector{Float64},
@@ -466,13 +477,16 @@ module Logic_R
         return re
     end
 
+
     function get_error(est::Vector, true_value::Vector=Value_R.true_vals)::Vector
         return abs.(est .- true_value) ./ true_value .* 100
     end
 
+
     function get_RSS(est::Vector, true_value::Vector)::Float64
         return sum((est .- true_value).^2)
     end
+
 
     function print_results(results::NamedTuple; t=collect(1.0:10.0:1000.0))
         true_list = results.true_params
@@ -502,6 +516,7 @@ module Logic_R
         end
     end
 
+
     function plot_results(results::NamedTuple)
         p1 = plot(results.α_trace, title="Alpha Convergence", color=:orange, label="Est Alpha", m=:o, ms=3)
         hline!([results.true_params[1]], label="True", color=:black, ls=:dash)
@@ -523,6 +538,7 @@ module Logic_R
         display(final_plot)
     end
 
+
     function best_solution(solution_list::Vector{Vector{Float64}}, I_data::Vector, I0, B1, B2, B3, B4, B5, B6, t::Vector)
         best_sol = Float64[]
         best_err = Inf
@@ -539,9 +555,11 @@ module Logic_R
         return best_sol, best_err
     end
 
+
     function RSS_I_data(I_data::Vector{Float64}, I::Vector{Float64})
         return sum((I_data .- I).^2)
     end
+
 
     function swap_project_SE0_for_sigma_gamma!(x::Vector{Float64}, I0::Float64)
         α, σ, γ, S0, E0 = x
@@ -562,6 +580,7 @@ module Logic_R
         x[5] = E0_new
         return x
     end
+
 
     function project_S0E0_euclidean!(x::Vector{Float64}, lb::Vector{Float64}, ub::Vector{Float64})
         s0 = x[4]
@@ -588,6 +607,7 @@ module Logic_R
         x[5] = e_proj
         return x
     end
+
 
     function project_to_bounds(result::Vector{Float64}, lb::Vector{Float64}, ub::Vector{Float64}, I0::Float64)::Vector{Float64}
         """
@@ -616,8 +636,10 @@ module Logic_R
         return x
     end
 
+
     to_physical(res_scaled, T::Float64) = [res_scaled[1] / T, res_scaled[2] / T, res_scaled[3] / T, res_scaled[4], res_scaled[5]]
     to_scaled(res, T::Float64) = [res[1] * T, res[2] * T, res[3] * T, res[4], res[5]]
+
 
     function HC_LS(t_scaled::Vector, T::Float64, I::Vector, I_data::Vector, vars::Vector, method::String; if_print=false)
         B = Logic_R.get_blocks(I_data, t_scaled, method)
@@ -671,6 +693,7 @@ module Logic_R
             RSS_Idata_I = RSS_Idata_I
         )
     end
+
 
     function noise_level_analysis(I, t, noise_levels, x_noise_percent, x0, method; num_of_iters=20)
         params = String["alpha", "sigma", "gamma", "S0", "E0"]
@@ -731,6 +754,7 @@ module Logic_R
         final_plot = plot(plt_list...; layout=(1, 5), size=(1600, 350), background_color=:white)
         savefig(final_plot, "noise_level_analysis.pdf")
     end
+
 
     function num_of_datapoints_analysis(num_of_datapoints::Vector{Int}, noise, x0, method; num_of_iters=20)
         params = String["alpha", "sigma", "gamma", "S0", "E0"]
@@ -793,6 +817,7 @@ module Logic_R
         final_plot = plot(plt_list...; layout=(1, 5), size=(1600, 350), background_color=:white)
         savefig(final_plot, "num_of_datapoints_analysis.pdf")
     end
+
 
     function noise_level_analysis(I, t, noise_levels, x_noise_percent, x0; num_of_iters=20)
         params  = String["alpha", "sigma", "gamma", "S0", "E0"]
@@ -882,6 +907,7 @@ module Logic_R
         savefig(final_plot, "noise_level_analysis.pdf")
     end
 
+
     function num_of_datapoints_analysis(num_of_datapoints::Vector{Int}, noise, x0; num_of_iters=20)
         params  = String["alpha", "sigma", "gamma", "S0", "E0"]
         methods = String["T", "S"]
@@ -969,6 +995,7 @@ module Logic_R
         final_plot = plot(plt_list...; layout=(2, 5), size=(1600, 650), background_color=:white)
         savefig(final_plot, "num_of_datapoints_analysis.pdf")
     end
+
 
     function noise_level_analysis_HC_LS(I, t_scaled, T, vars, noise_levels, x_noise_percent; num_of_iters=5)
         params  = String["alpha", "sigma", "gamma", "S0", "E0"]
@@ -1058,31 +1085,6 @@ module Logic_R
         savefig(final_plot, "noise_level_analysis.pdf")
     end
 
-    function simulate_seir_HC_LS(t_scaled, T::Float64; u0=Value_R.u, p=Value_R.p_true, plot=false)
-        p = p .* T
-        prob = ODEProblem(Logic_R.seir!, u0, (t_scaled[1], t_scaled[end]), p)
-        sol = DifferentialEquations.solve(prob, saveat=t_scaled)
-        sol_arr = Array(sol)
-        S = sol_arr[1, :]
-        E = sol_arr[2, :]
-        I = sol_arr[3, :]
-        R = sol_arr[4, :]
-
-        if plot
-            data_to_plot = hcat(S, E, I, R)
-            println("Plotting data of size: ", size(data_to_plot))
-            plt = Plots.plot(t_scaled, data_to_plot,
-            title = "SEIR Model Results",
-            label = ["True S" "True E" "True I" "True R"],
-            xlabel = "Time",
-            ylabel = "Value",
-            lw = 2
-            )
-            display(plt)
-        end
-
-        return S, E, I, R
-    end
 
     function num_of_datapoints_analysis_HC_LS(num_of_datapoints::Vector{Int}, noise, T, vars; num_of_iters=20)
         params  = String["alpha", "sigma", "gamma", "S0", "E0"]
@@ -1309,7 +1311,7 @@ module Logic_R
     end
 
 
-    function HC_LS_complete(t::Vector{Float64}, I_data::Vector, vars::Vector, method::String)
+    function HC_LS_complete(t::Vector{Float64}, I_data::Vector{Float64}, vars::Vector, method::String)
         T, _ = select_T(I_data, t)
         t_scaled = t ./ T
         B = get_blocks(I_data, t_scaled, method)
@@ -1350,6 +1352,7 @@ module Logic_R
             vars = vars
         )
     end
+
 
     function print_HC_LS(results::NamedTuple)
 

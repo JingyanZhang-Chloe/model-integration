@@ -17,33 +17,6 @@ using .Logic_R
 using .Value_R
 
 
-function simulate_seir(t_scaled, T::Float64; u0=Value_R.u, p=Value_R.p_true, plot=false)
-        p = p .* T
-        prob = ODEProblem(Logic_R.seir!, u0, (t_scaled[1], t_scaled[end]), p)
-        sol = DifferentialEquations.solve(prob, saveat=t_scaled)
-        sol_arr = Array(sol)
-        S = sol_arr[1, :]
-        E = sol_arr[2, :]
-        I = sol_arr[3, :]
-        R = sol_arr[4, :]
-
-        if plot
-            data_to_plot = hcat(S, E, I, R)
-            println("Plotting data of size: ", size(data_to_plot))
-            plt = Plots.plot(t_scaled, data_to_plot,
-            title = "SEIR Model Results",
-            label = ["True S" "True E" "True I" "True R"],
-            xlabel = "Time",
-            ylabel = "Value",
-            lw = 2
-            )
-            display(plt)
-        end
-
-        return S, E, I, R
-    end
-
-
 function odes_scaled!(du, u, p, τ)
     S, E, I, R, I_int, I_int_sq, I_int_int_sq, I_int_B4, I_int_B5 = u
     α, σ, γ = p
@@ -211,9 +184,9 @@ end
 
 function main()
     t = collect(0.0:10.0:1000.0)
+    S, E, I, R = Logic_R.simulate_seir(t)
     T = 100.0
     t_scaled = t ./ T
-    S, E, I, R = simulate_seir(t_scaled, T)
     noise_levels = [0, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05]
     noise_level = [0.001]
     for noise in noise_level

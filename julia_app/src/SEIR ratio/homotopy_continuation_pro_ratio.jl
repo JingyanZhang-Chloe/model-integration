@@ -5,6 +5,12 @@
 Description: 
 Author: zhangjingyan
 Date: 12/02/2026
+
+This file corresponds to appendix E.2
+
+We investigated parameter rescaling and cost normalization as implementation-level improvements to the HC solver.
+Although these modifications slightly improved numerical stability of the homotopy tracking process,
+they did not significantly change the statistical accuracy of the estimates.
 =#
 
 using HomotopyContinuation, DynamicPolynomials, Random

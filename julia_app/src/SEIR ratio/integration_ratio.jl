@@ -1,4 +1,4 @@
-# sanity_check_integration_ratio.jl
+# integration_ratio.jl
 # Julia Script
 
 #=

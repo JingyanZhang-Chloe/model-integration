@@ -1,4 +1,4 @@
-# seir_model_ratio.jl
+# least_squares_ratio.jl
 # Julia Script
 
 #=
